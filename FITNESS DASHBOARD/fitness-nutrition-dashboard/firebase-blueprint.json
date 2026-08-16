@@ -1,0 +1,110 @@
+{
+  "entities": {
+    "UserSecret": {
+      "title": "UserSecret",
+      "description": "Private profile information and metadata.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email"]
+    },
+    "Meal": {
+      "title": "Meal",
+      "description": "Logged meal with details of calories and macronutrients.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "meal": { "type": "string" },
+        "food": { "type": "string" },
+        "serving": { "type": "string" },
+        "calories": { "type": "number" },
+        "protein": { "type": "number" },
+        "carbs": { "type": "number" },
+        "fats": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "meal", "food", "calories"]
+    },
+    "Goals": {
+      "title": "Goals",
+      "description": "The daily caloric and macronutrient targets for the user, plus optional biometrics and onboarding settings.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "calories": { "type": "number" },
+        "protein": { "type": "number" },
+        "carbs": { "type": "number" },
+        "fats": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "age": { "type": "number" },
+        "gender": { "type": "string" },
+        "height": { "type": "number" },
+        "weight": { "type": "number" },
+        "profession": { "type": "string" },
+        "activityLevel": { "type": "string" },
+        "dietGoal": { "type": "string" },
+        "onboarded": { "type": "boolean" }
+      },
+      "required": ["userId", "calories", "protein", "carbs", "fats"]
+    },
+    "Habit": {
+      "title": "Habit",
+      "description": "Daily consistency and athletic habits.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "completedDates": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "isCustom": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "name", "completedDates", "isCustom"]
+    },
+    "SleepRecord": {
+      "title": "SleepRecord",
+      "description": "Sleep logs tracking hour durations and resting qualities.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "date": { "type": "string" },
+        "sleepTime": { "type": "string" },
+        "wakeTime": { "type": "string" },
+        "hours": { "type": "number" },
+        "quality": { "type": "string", "enum": ["Good", "Average", "Poor"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "date", "sleepTime", "wakeTime", "hours", "quality"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/private/info": {
+      "schema": "UserSecret",
+      "description": "Private PII or registration details of the user"
+    },
+    "/users/{userId}/meals/{mealId}": {
+      "schema": "Meal",
+      "description": "User's daily logged meals"
+    },
+    "/users/{userId}/goals/daily": {
+      "schema": "Goals",
+      "description": "User's caloric and macronutrient goals document"
+    },
+    "/users/{userId}/habits/{habitId}": {
+      "schema": "Habit",
+      "description": "User's active daily wellness and hydration consistency habits"
+    },
+    "/users/{userId}/sleep/{sleepId}": {
+      "schema": "SleepRecord",
+      "description": "User's sleep duration logs"
+    }
+  }
+}

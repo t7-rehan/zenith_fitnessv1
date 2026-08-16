@@ -1,0 +1,193 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net default catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation definitions
+    function isValidUserSecret(data, userId) {
+      return data.keys().hasAll(['userId', 'email'])
+        && data.keys().size() == 2
+        && data.userId == userId
+        && data.userId == request.auth.uid
+        && data.email is string
+        && data.email.size() <= 200;
+    }
+
+    function isValidMeal(data, userId) {
+      return data.keys().hasAll(['id', 'userId', 'meal', 'food', 'serving', 'calories', 'protein', 'carbs', 'fats', 'createdAt'])
+        && data.keys().size() == 10
+        && data.id is string
+        && data.id.size() <= 128
+        && data.userId == userId
+        && data.userId == request.auth.uid
+        && data.meal is string
+        && data.meal.size() <= 50
+        && data.food is string
+        && data.food.size() <= 150
+        && data.serving is string
+        && data.serving.size() <= 100
+        && data.calories is number
+        && data.calories >= 0
+        && data.calories <= 10000
+        && data.protein is number
+        && data.protein >= 0
+        && data.protein <= 1000
+        && data.carbs is number
+        && data.carbs >= 0
+        && data.carbs <= 1500
+        && data.fats is number
+        && data.fats >= 0
+        && data.fats <= 500
+        && (data.createdAt is timestamp || data.createdAt is string);
+    }
+
+    function isValidGoals(data, userId) {
+      return data.userId == userId
+        && data.userId == request.auth.uid
+        && data.calories is number
+        && data.calories >= 0
+        && data.calories <= 20000
+        && data.protein is number
+        && data.protein >= 0
+        && data.protein <= 2000
+        && data.carbs is number
+        && data.carbs >= 0
+        && data.carbs <= 3000
+        && data.fats is number
+        && data.fats >= 0
+        && data.fats <= 1000
+        && (data.updatedAt is timestamp || data.updatedAt is string)
+        && (
+          (data.keys().size() == 6 && data.keys().hasAll(['userId', 'calories', 'protein', 'carbs', 'fats', 'updatedAt']))
+          || (
+            data.keys().size() == 14
+            && data.keys().hasAll(['userId', 'calories', 'protein', 'carbs', 'fats', 'age', 'gender', 'height', 'weight', 'profession', 'activityLevel', 'dietGoal', 'onboarded', 'updatedAt'])
+            && data.age is number
+            && data.age >= 15
+            && data.age <= 120
+            && data.gender is string
+            && data.gender.size() <= 30
+            && data.height is number
+            && data.height >= 50
+            && data.height <= 300
+            && data.weight is number
+            && data.weight >= 20
+            && data.weight <= 500
+            && data.profession is string
+            && data.profession.size() <= 200
+            && data.activityLevel is string
+            && data.activityLevel.size() <= 50
+            && data.dietGoal is string
+            && data.dietGoal.size() <= 50
+            && data.onboarded is bool
+          )
+        );
+    }
+
+    function isValidHabit(data, userId) {
+      return data.keys().hasAll(['id', 'userId', 'name', 'completedDates', 'isCustom', 'createdAt'])
+        && data.keys().size() == 6
+        && data.id is string
+        && data.id.size() <= 128
+        && data.userId == userId
+        && data.userId == request.auth.uid
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 100
+        && data.completedDates is list
+        && data.completedDates.size() <= 1000
+        && data.isCustom is bool
+        && (data.createdAt is timestamp || data.createdAt is string);
+    }
+
+    function isValidSleepRecord(data, userId) {
+      return data.keys().hasAll(['id', 'userId', 'date', 'sleepTime', 'wakeTime', 'hours', 'quality', 'createdAt'])
+        && data.keys().size() == 8
+        && data.id is string
+        && data.id.size() <= 128
+        && data.userId == userId
+        && data.userId == request.auth.uid
+        && data.date is string
+        && data.date.size() <= 20
+        && data.sleepTime is string
+        && data.sleepTime.size() <= 20
+        && data.wakeTime is string
+        && data.wakeTime.size() <= 20
+        && data.hours is number
+        && data.hours >= 0.0
+        && data.hours <= 24.0
+        && (data.quality == 'Good' || data.quality == 'Average' || data.quality == 'Poor')
+        && (data.createdAt is timestamp || data.createdAt is string);
+    }
+
+    // Collection Security Rules
+    
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /private/info {
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidUserSecret(incoming(), userId);
+        allow update: if isOwner(userId) && isValidUserSecret(incoming(), userId);
+        allow delete: if isOwner(userId);
+      }
+
+      match /meals/{mealId} {
+        allow get: if isOwner(userId) && isValidId(mealId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(mealId) && isValidMeal(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(mealId) && isValidMeal(incoming(), userId);
+        allow delete: if isOwner(userId) && isValidId(mealId);
+      }
+
+      match /goals/daily {
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidGoals(incoming(), userId);
+        allow update: if isOwner(userId) && isValidGoals(incoming(), userId);
+        allow delete: if isOwner(userId);
+      }
+
+      match /habits/{habitId} {
+        allow get: if isOwner(userId) && isValidId(habitId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(habitId) && isValidHabit(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(habitId) && isValidHabit(incoming(), userId);
+        allow delete: if isOwner(userId) && isValidId(habitId);
+      }
+
+      match /sleep/{sleepId} {
+        allow get: if isOwner(userId) && isValidId(sleepId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(sleepId) && isValidSleepRecord(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(sleepId) && isValidSleepRecord(incoming(), userId);
+        allow delete: if isOwner(userId) && isValidId(sleepId);
+      }
+    }
+
+  }
+}

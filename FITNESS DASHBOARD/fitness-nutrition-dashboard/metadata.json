@@ -1,0 +1,6 @@
+{
+  "name": "Zenith Fitness",
+  "description": "Zenith Fitness is a premium athletic calorie counter, diet manager, and health tracker with unified hydration, sleep, and habit analysis backed by professional Gemini-powered coaching.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
