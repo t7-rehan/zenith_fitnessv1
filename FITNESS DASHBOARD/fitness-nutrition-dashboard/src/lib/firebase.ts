@@ -3,17 +3,17 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  projectId: "peaceful-autumn-3fbwx",
-  appId: "1:158221220007:web:86bcf2d9db404d648a4382",
-  apiKey: "AIzaSyAuB6Jg2eGe2e7H3WUlKFhzIP-xvUVt_EM",
-  authDomain: "peaceful-autumn-3fbwx.firebaseapp.com",
-  firestoreDatabaseId: "ai-studio-5a295da2-2568-41d2-add0-5c0e611b698c",
-  storageBucket: "peaceful-autumn-3fbwx.firebasestorage.app",
-  messagingSenderId: "158221220007"
+  apiKey: "AIzaSyBR2u-gAjyyykDWJFFCmWQAlXpyyVrOrPs",
+  authDomain: "zenith-fitness-d506b.firebaseapp.com",
+  projectId: "zenith-fitness-d506b",
+  storageBucket: "zenith-fitness-d506b.firebasestorage.app",
+  messagingSenderId: "845969177486",
+  appId: "1:845969177486:web:7a10dca729898fe2b642df",
+  measurementId: "G-J241VS9HX6"
 };
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = getFirestore(app);
 export const auth = getAuth(app);
 
 export enum OperationType {
