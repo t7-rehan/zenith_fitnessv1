@@ -177,15 +177,27 @@ export function NutritionAssistant({
         12000 // 12s timeout
       );
 
+      let finalContent = data.response;
+      if (!data.isConfigured || (data.response && data.response.includes("standby mode"))) {
+        const smartLocal = generateSmartLocalCoachResponse({
+          message: textToSend,
+          meals,
+          goals,
+          habits,
+          sleepLogs: sleepRecords
+        });
+        finalContent = smartLocal + "\n\n*(💡 Running on Zenith Smart Metabolic Engine. Add `GEMINI_API_KEY` to Render Environment to unlock deep generative AI)*";
+      }
+
       const assistantMsg: AssistantMessage = {
         id: `assist_${Date.now()}`,
         role: "assistant",
-        content: data.response || "Nutritional recommendation formulated.",
+        content: finalContent || "Nutritional recommendation formulated.",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
-      setEngineMode("gemini");
+      setEngineMode(data.isConfigured ? "gemini" : "smart-local");
       setBackendStatus((prev) => ({ ...prev, connected: true, message: "Connected" }));
     } catch (error: any) {
       console.warn("Backend unavailable or cold-starting, executing Smart Offline Coach engine:", error);

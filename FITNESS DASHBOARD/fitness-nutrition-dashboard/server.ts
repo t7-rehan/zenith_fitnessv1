@@ -829,25 +829,12 @@ Requirements:
         return res.status(400).json({ error: "Message is required" });
       }
 
-      // Check key integration
-      const apiKeyExists = !!process.env.GEMINI_API_KEY;
-      if (!apiKeyExists) {
-        return res.json({
-          response: "Nutrition AI Assistant is currently in premium standby mode. To unlock customized smart coaching, dietary feedback, and meal recommendation, simply add your `GEMINI_API_KEY` inside the **Settings > Secrets** panel.",
-          isConfigured: false
-        });
-      }
-
-      const client = getGeminiClient();
-      if (!client) {
-        return res.json({
-          response: "Gemini client failed to load. Please verify your GEMINI_API_KEY settings.",
-          isConfigured: false
-        });
-      }
-
       const activeMeals = meals || loggedMeals;
       const activeGoals = goals || currentGoals;
+
+      // Check key integration
+      const apiKeyExists = !!process.env.GEMINI_API_KEY;
+      const client = apiKeyExists ? getGeminiClient() : null;
 
       // Compose meal logs summary
       const mealsSummary = activeMeals
@@ -902,49 +889,52 @@ Guidelines:
       const prompt = `${formattedHistory ? "Previous Conversation History:\n" + formattedHistory + "\n\n" : ""}User asks: "${message}"`;
 
       let coachResponse = "";
-      try {
-        const response = await client.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: prompt,
-          config: {
-            systemInstruction,
-            temperature: 0.7
-          }
-        });
-        coachResponse = response.text || "";
-      } catch (apiErr: any) {
-        console.warn("Gemini chat coach rate-limited or exhausted (429). Generating helpful offline smart recommendations directly:", apiErr.message || apiErr);
-        
+      if (client) {
+        try {
+          const response = await client.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+              systemInstruction,
+              temperature: 0.7
+            }
+          });
+          coachResponse = response.text || "";
+        } catch (apiErr: any) {
+          console.warn("Gemini chat coach rate-limited or exhausted (429). Generating helpful offline smart recommendations directly:", apiErr.message || apiErr);
+        }
+      }
+
+      if (!coachResponse) {
         const calLeft = activeGoals.calories - totals.calories;
         const proteinLeft = activeGoals.protein - totals.protein;
         const carbsLeft = activeGoals.carbs - totals.carbs;
         const fatsLeft = activeGoals.fats - totals.fats;
 
-        coachResponse = "Hello! I'm currently running in smart offline coach mode to respect temporary connection limits.\n\n";
-        coachResponse += `Based on your logs today, you've consumed **${totals.calories} kcal** out of **${activeGoals.calories} kcal** target:\n`;
+        coachResponse = `Based on your logs today, you've consumed **${totals.calories} kcal** out of **${activeGoals.calories} kcal** target:\n`;
         coachResponse += `- **Protein**: ${totals.protein}g logged / ${activeGoals.protein}g goal (${proteinLeft > 0 ? `${proteinLeft}g remaining` : "Goal achieved!"})\n`;
         coachResponse += `- **Carbs**: ${totals.carbs}g logged / ${activeGoals.carbs}g goal (${carbsLeft > 0 ? `${carbsLeft}g remaining` : "Goal achieved!"})\n`;
         coachResponse += `- **Fats**: ${totals.fats}g logged / ${activeGoals.fats}g goal (${fatsLeft > 0 ? `${fatsLeft}g remaining` : "Goal achieved!"})\n\n`;
         
-        coachResponse += "💡 **My Offline Suggestions for You:**\n";
+        coachResponse += "💡 **Nutritional Recommendations for You:**\n";
         if (proteinLeft > 15) {
-          coachResponse += "- Your protein intake has some room! Try incorporating a high-protein option next, such as grilled chicken breast, egg whites, Greek yogurt, or boiled edamame to support tissue recovery.\n";
+          coachResponse += `• **High-Protein Options**: Try grilled chicken breast (150g ~ 46g P), egg whites with 1 yolk, 0% Greek yogurt, or a whey protein shake to fill the remaining ${proteinLeft}g protein.\n`;
         } else {
-          coachResponse += "- Excellent job hitting your baseline protein needs! Keep focus on clean macros.\n";
+          coachResponse += "• **Protein Goal Satisfied**: Excellent job hitting your baseline protein needs! Focus on micronutrients and fiber.\n";
         }
         
         if (calLeft > 300) {
-          coachResponse += `- You have about ${calLeft} kcal left for the day. Adding a balanced serving of oats, grains, or raw mixed nuts can comfortably fill these requirements.\n`;
+          coachResponse += `• **Energy Balance**: You have **${calLeft} kcal** remaining today. Adding a balanced portion of oats, brown rice, sweet potato, or raw almonds will comfortably fuel your daily output.\n`;
         } else if (calLeft < 0) {
-          coachResponse += `- You are currently over your calorie target by ${Math.abs(calLeft)} kcal. Consider balancing with light cardiovascular active movement like walking or swimming today!\n`;
+          coachResponse += `• **Energy Balance**: You are currently over your calorie goal by ${Math.abs(calLeft)} kcal. Hydrate well and maintain light active walking.\n`;
         } else {
-          coachResponse += "- You are right on target for your calorie goal today! Outstanding calibration.\n";
+          coachResponse += "• **Energy Balance**: You are right on target for your calorie goal today! Outstanding calibration.\n";
         }
       }
 
       res.json({
         response: coachResponse || "I was unable to formulate a nutrition suggestion. Please check your meals data.",
-        isConfigured: true
+        isConfigured: apiKeyExists
       });
     } catch (err: any) {
       console.error("Gemini Request Error:", err);
