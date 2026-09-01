@@ -31,6 +31,7 @@ import { MacroGauge } from "./components/MacroGauge";
 import { NutritionAssistant } from "./components/NutritionAssistant";
 import { CalorieCalculatorModal } from "./components/CalorieCalculatorModal";
 import { HealthTracking } from "./components/HealthTracking";
+import { apiFetch } from "./lib/api";
 
 // Firebase Integration
 import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
@@ -371,9 +372,8 @@ export default function App() {
     const timer = setTimeout(async () => {
       try {
         setIsSearching(true);
-        const res = await fetch(`/api/food/search?q=${encodeURIComponent(foodName)}`);
-        if (res.ok) {
-          const data = await res.json();
+        const data = await apiFetch<any[]>(`/api/food/search?q=${encodeURIComponent(foodName)}`);
+        if (Array.isArray(data)) {
           setSearchResults(data);
           setShowDropdown(data.length > 0);
         }
@@ -1778,7 +1778,13 @@ export default function App() {
                   exit={{ opacity: 0, y: -15 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <NutritionAssistant meals={meals} goals={goals} />
+                  <NutritionAssistant
+                    meals={meals}
+                    goals={goals}
+                    habits={habits}
+                    sleepRecords={sleepRecords}
+                    athleteName={currentUser?.displayName || currentUser?.email?.split("@")[0] || "Athlete"}
+                  />
                 </motion.div>
               )}
 

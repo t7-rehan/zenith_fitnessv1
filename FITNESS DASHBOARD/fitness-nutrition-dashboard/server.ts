@@ -315,9 +315,30 @@ function getSmartOfflineEstimate(query: string): MatchingFood {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+  // CORS middleware for cross-origin requests from Vercel deployments
+  app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(200);
+    }
+    next();
+  });
 
   app.use(express.json());
+
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({
+      status: "ok",
+      service: "zenith-fitness-backend",
+      timestamp: new Date().toISOString(),
+      geminiConfigured: !!process.env.GEMINI_API_KEY
+    });
+  });
 
   // GET /api/food/search - Food lookup database & AI search
   app.get("/api/food/search", async (req, res) => {
@@ -378,7 +399,7 @@ async function startServer() {
             const systemInstruction = `You are a precise nutrition database bot. Given a food name query, return standard nutritional information. If the food doesn't exist, generate standard nutritional estimates. CRITICAL Portion and Unit Behavior: For foods that are discrete items eaten in units/portions (such as breads like chapati/roti/tortilla, eggs, fruit like banana/apple/mango, slices, bowls of dal/sabji/soup, etc.), DO NOT use '100g' as the serving size. Instead, use natural human-friendly servings like '1 standard unit', '1 bowl', '1 plate', '1 slice', '1 cup', '1 glass', or '1 piece'. Provide the nutritional values corresponding exactly to that single unit/bowl/piece. Only use grams or weight measurement if the food item is naturally measured by weight (like nuts raw or uncooked beef). Your response format MUST be a valid JSON array of objects representing matching foods. Each object must have these exactly typed fields: "food" (string), "serving" (string), "calories" (number), "protein" (number), "carbs" (number), "fats" (number). Keep estimates precise and realistic. Max 3 matching options.`;
 
             const response = await client.models.generateContent({
-              model: "gemini-3.5-flash",
+              model: "gemini-2.5-flash",
               contents: `Return nutrition details for food query matching: "${query}"`,
               config: {
                 systemInstruction,
@@ -637,7 +658,7 @@ Requirements:
 - DO NOT return markup, markdown block, backticks, or any outer text. Just pure string list JSON.`;
 
             const response = await client.models.generateContent({
-              model: "gemini-3.5-flash",
+              model: "gemini-2.5-flash",
               contents: promptText,
               config: {
                 temperature: 0.6,
@@ -883,7 +904,7 @@ Guidelines:
       let coachResponse = "";
       try {
         const response = await client.models.generateContent({
-          model: "gemini-3.5-flash",
+          model: "gemini-2.5-flash",
           contents: prompt,
           config: {
             systemInstruction,
